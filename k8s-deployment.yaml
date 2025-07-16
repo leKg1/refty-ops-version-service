@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: refty-ops-version-service
+  labels:
+    app: refty-ops-version-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: refty-ops-version-service
+  template:
+    metadata:
+      labels:
+        app: refty-ops-version-service
+    spec:
+      containers:
+      - name: refty-ops-version-service
+        image: refty-ops-version-service:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-token-secret
+              key: token
+        - name: GITHUB_REPO
+          value: "leKg1/refty-infra-test"
+        - name: REPO_LOCAL_PATH
+          value: "/app/repo"
+        - name: GIT_USER_NAME
+          value: "Refty Ops Service"
+        - name: GIT_USER_EMAIL
+          value: "ops@refty.com"
+        - name: PORT
+          value: "3000"
+        volumeMounts:
+        - name: repo-volume
+          mountPath: /app/repo
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: repo-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: refty-ops-version-service
+spec:
+  selector:
+    app: refty-ops-version-service
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-token-secret
+type: Opaque
+data:
+  token: <base64-encoded-github-token> 
